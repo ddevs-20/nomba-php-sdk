@@ -333,7 +333,8 @@ For support, please:
 
 - GitHub: [@ddevs-20](https://github.com/ddevs-20)
 - Repository: [nomba-php-sdk](https://github.com/ddevs-20/nomba-php-sdk)
+- [Demfati](https://demfati.com)
 
 ---
 
-<p align="center">Built with ❤️ for the Nomba developer community</p>
+<p align="center">Built with ❤️ by Demfati for the Nomba developer community</p>
