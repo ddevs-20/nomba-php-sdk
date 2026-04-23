@@ -12,5 +12,13 @@
     "psr-4": {
       "Nomba\\": "src/"
     }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Nomba\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit"
   }
 }
