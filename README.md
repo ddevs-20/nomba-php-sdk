@@ -228,7 +228,72 @@ $terminalAction = $client->terminals->createAction([
 ]);
 ```
 
+
+---
+
+## Frontend Integration (Nomba Checkout Popup)
+
+The SDK includes a premium checkout popup for easy frontend integration.
+
+### 1. Include the Script
+Copy the `assets/nomba-checkout.js` to your public directory and include it:
+
+```html
+<script src="/path/to/nomba-checkout.js"></script>
+```
+
+### Checkout Workflow
+
+1. **Backend**: Create an order using the SDK and return the `orderRef` and `checkoutUrl`.
+2. **Frontend**: Initialize `NombaCheckout` with the `checkoutUrl` and `orderRef`.
+
+```javascript
+// Step 2: Initialize and Open the Popup
+const checkout = NombaCheckout.init({
+    checkoutUrl: 'https://checkout.nomba.com/pay/abc-123', // Gotten from backend createOrder()
+    orderRef: 'UNIQUE_ORDER_REF', 
+    sseUrl: '/api/payment-status.php',
+    onSuccess: function(data) {
+        console.log('Payment Successful', data);
+        // Custom action: e.g., redirect or update UI
+        window.location.href = '/dashboard/success';
+    },
+    onClose: function() {
+        console.log('User closed the checkout');
+    }
+});
+
+checkout.open();
+```
+
+
+---
+
+## Real-time Updates (Backend SSE)
+
+To automatically close the popup on success, set up an SSE (Server-Sent Events) endpoint using the `SseHandler`.
+
+### Example: `payment-status.php`
+
+```php
+require_once 'vendor/autoload.php';
+
+use Nomba\NombaClient;
+use Nomba\Http\SseHandler;
+
+$client = new NombaClient([...]);
+$handler = new SseHandler($client);
+
+$orderRef = $_GET['orderRef'];
+
+// This will keep the connection open and poll Nomba API
+$handler->streamStatus($orderRef);
+```
+
+---
+
 ## Error Handling
+
 
 The SDK throws exceptions for API errors:
 
