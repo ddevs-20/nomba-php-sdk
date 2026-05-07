@@ -125,6 +125,7 @@
         },
 
         open: function () {
+            this.statusShown = false;
             this.createModal();
             setTimeout(() => {
                 document.querySelector('.nomba-modal-overlay').classList.add('active');
@@ -157,13 +158,13 @@
                     <div class="nomba-close-trigger">&times;</div>
                     <div class="nomba-loader-overlay" id="nomba-loader">
                         <div class="nomba-spinner"></div>
-                        <p style="font-family: sans-serif; color: #666; font-size: 14px;">Securely connecting to Nomba...</p>
+                        <p style="font-family: sans-serif; color: #666; font-size: 14px;" id="nomba-loader-text">Securely connecting to Nomba...</p>
                     </div>
                     <iframe 
                         src="${this.config.checkoutUrl}" 
                         class="nomba-iframe" 
                         id="nomba-iframe"
-                        onload="document.getElementById('nomba-loader').style.opacity = '0'; setTimeout(() => document.getElementById('nomba-loader').style.display = 'none', 500);"
+                        onload="if(!NombaCheckout.statusShown) { document.getElementById('nomba-loader').style.opacity = '0'; setTimeout(() => { if(!NombaCheckout.statusShown) document.getElementById('nomba-loader').style.display = 'none' }, 500); }"
                     ></iframe>
                 </div>
             `;
@@ -178,6 +179,48 @@
             };
         },
 
+        updateStatusUI: function (status, data) {
+            const loader = document.getElementById('nomba-loader');
+            if (!loader) return;
+
+            this.statusShown = true;
+            loader.style.display = 'flex';
+            loader.style.opacity = '1';
+            loader.style.background = 'rgba(255, 255, 255, 0.98)';
+            
+            const statusMap = {
+                'SUCCESS': { title: 'Payment Successful', icon: '✓', color: '#22c55e', btn: true, msg: 'Your transaction was completed successfully.' },
+                'FAILED': { title: 'Payment Failed', icon: '✕', color: '#ef4444', btn: true, msg: 'There was an issue processing your payment.' },
+                'CANCELLED': { title: 'Payment Cancelled', icon: '✕', color: '#64748b', btn: true, msg: 'The transaction was cancelled.' },
+                'EXPIRED': { title: 'Payment Expired', icon: '!', color: '#f59e0b', btn: true, msg: 'The payment session has expired.' },
+                'ERROR': { title: 'Processing Error', icon: '!', color: '#ef4444', btn: true, msg: 'An error occurred during processing.' },
+                'PENDING': { title: 'Processing Payment...', icon: '<div class="nomba-spinner" style="margin: 0 auto;"></div>', color: '#f8c705', btn: false, msg: 'Please wait while we confirm your payment.' },
+                'PROCESSING': { title: 'Confirming Transaction...', icon: '<div class="nomba-spinner" style="margin: 0 auto;"></div>', color: '#f8c705', btn: false, msg: 'We are verifying your transaction with the bank.' }
+            };
+
+            const config = statusMap[status] || { title: 'Payment ' + status, icon: '?', color: '#64748b', btn: true, msg: data.message || '' };
+
+            loader.innerHTML = `
+                <div style="text-align: center; padding: 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 100%; box-sizing: border-box;">
+                    <div style="width: 70px; height: 70px; border-radius: 50%; background: ${['PENDING', 'PROCESSING'].includes(status) ? 'transparent' : config.color}; color: white; display: flex; align-items: center; justify-content: center; font-size: 35px; margin: 0 auto 25px; transition: all 0.3s ease; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+                        ${config.icon}
+                    </div>
+                    <h2 style="margin: 0 0 10px; color: #1a1a1a; font-size: 22px; font-weight: 600; letter-spacing: -0.025em;">${config.title}</h2>
+                    <p style="margin: 0 0 25px; color: #666; font-size: 15px; line-height: 1.5; max-width: 280px; margin-left: auto; margin-right: auto;">${data.message || config.msg}</p>
+                    ${config.btn ? `<button id="nomba-status-close" style="background: #f8c705; border: none; padding: 12px 35px; border-radius: 8px; cursor: pointer; font-weight: 600; color: #1a1a1a; font-size: 15px; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Close Checkout</button>` : ''}
+                </div>
+            `;
+
+            if (config.btn) {
+                const btn = document.getElementById('nomba-status-close');
+                if (btn) {
+                    btn.onclick = () => this.close();
+                    btn.onmouseover = () => btn.style.transform = 'scale(1.02)';
+                    btn.onmouseout = () => btn.style.transform = 'scale(1)';
+                }
+            }
+        },
+
         startStatusPolling: function () {
             if (!this.config.sseUrl || !this.config.orderRef) return;
 
@@ -190,31 +233,29 @@
                 try {
                     const data = JSON.parse(event.data);
                     
-                    if (data.status === 'SUCCESS') {
+                    // Show status in UI
+                    this.updateStatusUI(data.status, data);
+
+                    const terminalStatuses = ['SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED', 'ERROR'];
+                    
+                    if (terminalStatuses.includes(data.status)) {
                         if (this.eventSource) {
                             this.eventSource.close();
                             this.eventSource = null;
                         }
                         
-                        if (this.config.onSuccess) {
-                            this.config.onSuccess(data);
-                        } else if (this.config.redirectUrl) {
-                            window.location.href = this.config.redirectUrl;
+                        // If user provided callbacks or redirect, execute them after a delay
+                        // so they can see the final status in the modal
+                        if (data.status === 'SUCCESS') {
+                            if (this.config.onSuccess) {
+                                setTimeout(() => this.config.onSuccess(data), 2000);
+                            } else if (this.config.redirectUrl) {
+                                setTimeout(() => window.location.href = this.config.redirectUrl, 2000);
+                            }
                         } else {
-                            alert("Payment Successful!");
-                            this.close();
-                        }
-                    } else if (data.status === 'FAILED' || data.status === 'CANCELLED') {
-                        if (this.eventSource) {
-                            this.eventSource.close();
-                            this.eventSource = null;
-                        }
-                        
-                        if (this.config.onError) {
-                            this.config.onError(data);
-                        } else {
-                            alert("Payment " + data.status.toLowerCase());
-                            this.close();
+                            if (this.config.onError) {
+                                setTimeout(() => this.config.onError(data), 2000);
+                            }
                         }
                     }
                 } catch (e) {
