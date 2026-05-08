@@ -1,7 +1,16 @@
-(function (window) {
+(function (root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define([], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory();
+    } else {
+        root.NombaCheckout = factory();
+    }
+}(typeof self !== 'undefined' ? self : this, function () {
     'use strict';
 
     const NombaCheckout = {
+        // ... rest of the code ...
         init: function (config) {
             this.config = config;
             this.injectStyles();
@@ -269,6 +278,6 @@
         }
     };
 
-    window.NombaCheckout = NombaCheckout;
+    return NombaCheckout;
+}));
 
-})(window);

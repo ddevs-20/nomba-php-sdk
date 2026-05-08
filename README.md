@@ -236,11 +236,13 @@ $terminalAction = $client->terminals->createAction([
 The SDK includes a premium checkout popup for easy frontend integration.
 
 ### 1. Include the Script
-Copy the `assets/nomba-checkout.js` to your public directory and include it:
+Include the minified script via a CDN or your public assets folder:
 
 ```html
-<script src="/path/to/nomba-checkout.js"></script>
+<!-- For production usage -->
+<script src="https://cdn.yourdomain.com/nomba-checkout.min.js"></script>
 ```
+
 
 ### Checkout Workflow
 
