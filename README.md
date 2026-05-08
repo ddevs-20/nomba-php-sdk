@@ -240,8 +240,9 @@ Include the minified script via a CDN or your public assets folder:
 
 ```html
 <!-- For production usage -->
-<script src="https://cdn.yourdomain.com/nomba-checkout.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ddevs-20/nomba-php-sdk@main/dist/nomba-checkout.min.js" async="true" crossorigin="anonymous"></script>
 ```
+
 
 
 ### Checkout Workflow
